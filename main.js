@@ -32,23 +32,26 @@ async function _handleAndroid(options) {
     androidPacker.addRequireToMainJs("src/android-instant-downloader.js");
     androidPacker.addRequireToMainJs("src/android-instant-helper.js");
 
-    //添加3个字段到strings.xml
-    let stringList = [
-        {name: 'host', data: config.host},
-        {name: 'path_pattern', data: config.pathPattern},
-        {name: 'scheme', data: config.scheme},
-    ];
+    //添加 instant 启动配置
+    let gradlePropertyPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/gradle.properties');
+    if (Fs.existsSync(gradlePropertyPath)) {
+        let content = Fs.readFileSync(gradlePropertyPath, 'utf-8');
+        if (content.indexOf('INSTANT_GAME_SCHEME') === -1) {
+            let appPath = ['\n', '# google play instant config', `INSTANT_GAME_SCHEME=${config.scheme}`, `INSTANT_GAME_HOST=${config.host}`, `INSTANT_GAME_PATHPATTERN=${config.pathPattern}`];
+            content += appPath.join('\n');
+            Fs.writeFileSync(gradlePropertyPath, content);
+        }
+    }
 
-    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/res/values/strings.xml');
-    for (let i = 0; i < stringList.length; i++) {
-        let item = stringList[i];
-        await androidPacker.addStringToXML({
-            "$": {
-                name: item.name,
-                translatable: "false"
-            },
-            "_": item.data
-        }, xmlPath);
+    //添加 build.gradle 配置
+    let buildGradlePath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/build.gradle');
+    if (Fs.existsSync(buildGradlePath)) {
+        let buildGradle = Fs.readFileSync(buildGradlePath, 'utf-8');
+        if (buildGradle.indexOf('android.defaultConfig.manifestPlaceholders') === -1) {
+            buildGradle += '\n';
+            buildGradle += 'android.defaultConfig.manifestPlaceholders = [scheme:INSTANT_GAME_SCHEME,host:INSTANT_GAME_HOST,pathPattern:INSTANT_GAME_PATHPATTERN]';
+            Fs.writeFileSync(buildGradlePath, buildGradle);
+        }
     }
 
     _startPreviewServer(options);
@@ -64,8 +67,7 @@ function _genFirstPackage(options) {
     let srcDirPath = Path.join(options.dest, "res");
 
     let remoteDirPath = Path.join(options.dest, "remote_res");
-    Fs.ensureDirSync(remoteDirPath);
-    Fs.emptyDirSync(remoteDirPath);
+    Fs.removeSync(remoteDirPath);
 
     if (options['android-instant'].skipRecord) {
         Fs.copySync(srcDirPath, remoteDirPath);
