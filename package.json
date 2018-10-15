@@ -4,6 +4,8 @@
     "description": "Google Play Instant Importer",
     "author": "Cocos Creator",
     "main": "main.js",
-    "ignoreWatch": true
+    "reload":{
+        "ignore":["**/*"]
+    }
   }
   
