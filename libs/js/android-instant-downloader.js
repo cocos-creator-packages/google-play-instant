@@ -25,7 +25,7 @@
 
 const ANDROID_INSTANT_DOWNLOAD_PIPE = 'AndroidInstantDownloader';
 const MAX_DOWNLOAD_TASK = 32;
-const TIME_SECONDS = 60;
+const TIME_SECONDS = 10;
 const FILE_NAME_SUFFIX = 'game';
 
 const INSTANT_REMOTE_SERVER = '';
