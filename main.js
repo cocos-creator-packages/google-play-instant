@@ -2,6 +2,7 @@
 const Path = require('fire-path');
 const Fs = require('fire-fs');
 const Globby = require('globby');
+const xml2js = require('xml2js');
 const {android, ios} = Editor.require('app://editor/core/native-packer');
 /**
  * 添加 facebook audience network 的 sdk 到 android 工程
@@ -53,6 +54,29 @@ async function _handleAndroid(options) {
             Fs.writeFileSync(buildGradlePath, buildGradle);
         }
     }
+
+    //修改包名，在 gradle 配置无效，所以直接在 androidManifest.xml 中修改
+    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/androidManifest.xml');
+    do {
+        if (!Fs.existsSync(xmlPath)) {
+            break;
+        }
+
+        let xml = await androidPacker.readXML(xmlPath);
+
+        if (!xml || !xml.manifest || !xml.manifest || !xml.manifest.$.package) {
+            Editor.error('Android Instant--> can\'t find package attribute at androidManifest.xml');
+            break;
+        }
+
+        //已经有过修改，就不要修改了，如果要修改，用户手动去 android studio 修改
+        if(xml.manifest.$.package !=='org.cocos2dx.javascript'){
+            break;
+        }
+
+        xml.manifest.$.package = options.packageName;
+        Fs.writeFileSync(xmlPath, new xml2js.Builder().buildObject(xml));
+    } while (false);
 
     _startPreviewServer(options);
 }
