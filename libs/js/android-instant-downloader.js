@@ -28,7 +28,7 @@ const MAX_DOWNLOAD_TASK = 32;
 const TIME_SECONDS = 20;
 const FILE_NAME_SUFFIX = 'game';
 
-const INSTANT_REMOTE_SERVER = '';
+let INSTANT_REMOTE_SERVER = '';
 
 let textDownloader = new jsb.Downloader({
     countOfMaxProcessingTasks: MAX_DOWNLOAD_TASK,
@@ -58,6 +58,7 @@ textDownloader.setOnFileTaskSuccess((function (task) {
 }));
 
 function _resolvePath(url) {
+    INSTANT_REMOTE_SERVER = INSTANT_REMOTE_SERVER || "";
     let split = url.split("res/");
     let path = "";
     if (split.length > 1) {
