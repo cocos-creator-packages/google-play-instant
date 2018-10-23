@@ -33,12 +33,14 @@ async function _handleAndroid(options) {
     androidPacker.addRequireToMainJs("src/android-instant-downloader.js");
     androidPacker.addRequireToMainJs("src/android-instant-helper.js");
 
+    let isUrlValid = !!(config.scheme && config.host && config.pathPattern);
+
     //添加 instant 启动配置
     let gradlePropertyPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/gradle.properties');
     if (Fs.existsSync(gradlePropertyPath)) {
         let content = Fs.readFileSync(gradlePropertyPath, 'utf-8');
-        if (content.indexOf('INSTANT_GAME_SCHEME') === -1) {
-            let appPath = ['\n', '# google play instant config', `INSTANT_GAME_SCHEME=${config.scheme}`, `INSTANT_GAME_HOST=${config.host}`, `INSTANT_GAME_PATHPATTERN=${config.pathPattern}`];
+        if (isUrlValid && content.indexOf('INSTANT_GAME_SCHEME') === -1) {
+            let appPath = ['\n', '# google play instant config', `INSTANT_GAME_HOST=${config.host}`, `INSTANT_GAME_PATHPATTERN=${config.pathPattern}`];
             content += appPath.join('\n');
             Fs.writeFileSync(gradlePropertyPath, content);
         }
@@ -48,9 +50,9 @@ async function _handleAndroid(options) {
     let buildGradlePath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/build.gradle');
     if (Fs.existsSync(buildGradlePath)) {
         let buildGradle = Fs.readFileSync(buildGradlePath, 'utf-8');
-        if (buildGradle.indexOf('android.defaultConfig.manifestPlaceholders') === -1) {
+        if (isUrlValid && buildGradle.indexOf('android.defaultConfig.manifestPlaceholders') === -1) {
             buildGradle += '\n';
-            buildGradle += 'android.defaultConfig.manifestPlaceholders = [scheme:INSTANT_GAME_SCHEME,host:INSTANT_GAME_HOST,pathPattern:INSTANT_GAME_PATHPATTERN]';
+            buildGradle += 'android.defaultConfig.manifestPlaceholders = [host:INSTANT_GAME_HOST,pathPattern:INSTANT_GAME_PATHPATTERN]';
             Fs.writeFileSync(buildGradlePath, buildGradle);
         }
     }
@@ -70,7 +72,7 @@ async function _handleAndroid(options) {
         }
 
         //已经有过修改，就不要修改了，如果要修改，用户手动去 android studio 修改
-        if(xml.manifest.$.package !=='org.cocos2dx.javascript'){
+        if (xml.manifest.$.package !== 'org.cocos2dx.javascript') {
             break;
         }
 
@@ -78,7 +80,87 @@ async function _handleAndroid(options) {
         Fs.writeFileSync(xmlPath, new xml2js.Builder().buildObject(xml));
     } while (false);
 
+    //判断下url是否配置，没有的话就删掉intent-filter
+    if (isUrlValid) {
+        await _addFilterDataIfNotExist(androidPacker, options);
+    } else {
+        await _removeFilterDataIfExist(androidPacker, options);
+    }
+
     _startPreviewServer(options);
+}
+
+async function _removeFilterDataIfExist(androidPacker, options) {
+    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/androidManifest.xml');
+    let xml = await androidPacker.readXML(xmlPath);
+    do {
+        if (!xml || !xml.manifest || !xml.manifest || !xml.manifest.application || !xml.manifest.application.activity || !xml.manifest.application.activity['intent-filter']) {
+            break;
+        }
+
+        let intentFilter = xml.manifest.application.activity['intent-filter'];
+
+        if (!Array.isArray(intentFilter)) {
+            intentFilter = [intentFilter];
+        }
+
+        let ft = intentFilter.find(item => {
+            return item.$ && item.$['android:order']
+        });
+
+        if (!ft || !ft.$) {
+            break;
+        }
+
+        delete ft.$['android:autoVerify'];
+
+        if (ft.data) {
+            delete ft.data;
+        }
+
+        Fs.writeFileSync(xmlPath, new xml2js.Builder().buildObject(xml))
+    } while (false);
+}
+
+async function _addFilterDataIfNotExist(androidPacker, options) {
+    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/androidManifest.xml');
+    let xml = await androidPacker.readXML(xmlPath);
+    do {
+        if (!xml || !xml.manifest || !xml.manifest || !xml.manifest.application || !xml.manifest.application.activity || !xml.manifest.application.activity['intent-filter']) {
+            break;
+        }
+
+        let intentFilter = xml.manifest.application.activity['intent-filter'];
+
+        if (!Array.isArray(intentFilter)) {
+            intentFilter = [intentFilter];
+        }
+
+        let ft = intentFilter.find(item => {
+            return item.$ && item.$['android:order']
+        });
+
+        ft.$['android:autoVerify'] = true;
+
+        if (!ft || ft.data) {
+            break;
+        }
+
+        ft.data = [
+            {
+                "$": {
+                    "android:host": "${host}",
+                    "android:pathPattern": "${pathPattern}",
+                    "android:scheme": "https"
+                }
+            },
+            {
+                "$": {"android:scheme": "http"}
+            }
+        ];
+
+        Fs.writeFileSync(xmlPath, new xml2js.Builder().buildObject(xml))
+    } while (false);
 }
 
 /**
