@@ -48,13 +48,8 @@ textDownloader.setOnTaskError((function (task, errCode, errorCodeInternal, error
 
 textDownloader.setOnFileTaskSuccess((function (task) {
     let cb = downloaderCbMap[task.requestURL];
-    if (cb) {
-        let str = jsb.fileUtils.getStringFromFile(task.storagePath);
-        str ? cb(null, str) : cb({
-                errorMessage: "file not found"
-            });
-        delete downloaderCbMap[task.requestURL];
-    }
+    cb && cb(null, task);
+    delete downloaderCbMap[task.requestURL];
 }));
 
 function _resolvePath(url) {
@@ -88,7 +83,6 @@ AndroidInstantDownloaderPipe.prototype.handle = function (item, callback) {
 
     let remotePath = jsb.fileUtils.getWritablePath() + item.url;
     if (jsb.fileUtils.isFileExist(remotePath)) {
-        item.url = remotePath;
         return item;
     }
 
@@ -98,11 +92,12 @@ AndroidInstantDownloaderPipe.prototype.handle = function (item, callback) {
                 cc.error("download fail ", err.errorMessage);
                 break;
             }
-            item.url = remotePath;
         } while (false);
         callback();
     });
 };
+
+jsb.fileUtils.addSearchPath(jsb.fileUtils.getWritablePath());
 
 let instantDownloaderPipe = new AndroidInstantDownloaderPipe();
 let idx = cc.loader._pipes.indexOf(cc.loader.downloader) || 1;
