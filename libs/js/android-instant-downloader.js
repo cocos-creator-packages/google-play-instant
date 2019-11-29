@@ -77,6 +77,7 @@ let AndroidInstantDownloaderPipe = function () {
 };
 
 AndroidInstantDownloaderPipe.prototype.handle = function (item, callback) {
+    // android-instant-downloader can only be used to download res
     if (item.url.endsWith('.js') || jsb.fileUtils.isFileExist(item.url)) {
         return item;
     }
