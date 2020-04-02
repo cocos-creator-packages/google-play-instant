@@ -66,7 +66,7 @@ async function _handleAndroid(options) {
 
         let xml = await androidPacker.readXML(xmlPath);
 
-        if (!xml || !xml.manifest || !xml.manifest || !xml.manifest.$.package) {
+        if (!xml || !xml.manifest || !xml.manifest || typeof xml.manifest.$.package === "undefined") {
             Editor.error('Android Instant--> can\'t find package attribute at androidManifest.xml');
             break;
         }
