@@ -4,6 +4,10 @@ const Fs = require('fire-fs');
 const Globby = require('globby');
 const xml2js = require('xml2js');
 const {android, ios} = Editor.require('app://editor/core/native-packer');
+
+const REMOTE_ASSETS_PATH = 'remote_assets';
+const TEMP_ASSETS_PATH = 'temp_assets';
+
 /**
  * 添加 facebook audience network 的 sdk 到 android 工程
  * @param options
@@ -170,9 +174,9 @@ async function _addFilterDataIfNotExist(androidPacker, options) {
 function _genFirstPackage(options) {
 
     //先拷贝第一个包，剩余的资源放入别的文件夹后续备用
-    let srcDirPath = Path.join(options.dest, "res");
+    let srcDirPath = Path.join(options.dest, "assets");
 
-    let remoteDirPath = Path.join(options.dest, "remote_res");
+    let remoteDirPath = Path.join(options.dest, REMOTE_ASSETS_PATH);
     Fs.removeSync(remoteDirPath);
 
     if (options['android-instant'].skipRecord) {
@@ -191,26 +195,27 @@ function _genFirstPackage(options) {
         return;
     }
 
-    let destDirPath = Path.join(options.dest, "temp_res");
+    let destDirPath = Path.join(options.dest, TEMP_ASSETS_PATH);
     Fs.ensureDirSync(destDirPath);
     Fs.emptyDirSync(destDirPath);
 
-    let paths = Globby.sync(Path.join(srcDirPath, "**"), {nodir: true});
+    let paths = Globby.sync([Path.join(srcDirPath, "**"), '!' + Path.join(srcDirPath, "**", "config.*"), '!' + Path.join(srcDirPath, "**", "index.*")], {nodir: true});
     let first_package_list = pkgInfo.first.items.concat(options.scenes);
 
     paths.forEach(path => {
+        let destPath = path.replace("assets/", `${TEMP_ASSETS_PATH}/`);
+        Fs.ensureDirSync(Path.dirname(destPath));
+        Fs.copyFileSync(path, destPath);
         let id = Path.basenameNoExt(path);
-        first_package_list.forEach(uuid => {
-            if (id.indexOf(uuid) != -1) {
-                let destPath = path.replace("res/", "temp_res/");
-                Fs.ensureDirSync(Path.dirname(destPath));
-                Fs.copySync(path, destPath);
-            }
+        let inFirstPackage = first_package_list.find(uuid => {
+            return id.indexOf(uuid) !== -1;
         });
+        if (!inFirstPackage) {
+            Fs.unlinkSync(path);
+        }
     });
 
-    Fs.renameSync(srcDirPath, Path.join(options.dest, "remote_res"));
-    Fs.renameSync(destDirPath, srcDirPath);
+    Fs.renameSync(destDirPath, Path.join(options.dest, REMOTE_ASSETS_PATH));
 }
 
 /**
@@ -219,7 +224,7 @@ function _genFirstPackage(options) {
  * @private
  */
 function _startPreviewServer(options) {
-    Editor.Ipc.sendToMain('app:update-android-instant-preview-path', Path.join(options.dest, "remote_res"));
+    Editor.Ipc.sendToMain('app:update-android-instant-preview-path', Path.join(options.dest, REMOTE_ASSETS_PATH));
 }
 
 async function handleEvent(options, cb) {
@@ -233,11 +238,11 @@ async function handleEvent(options, cb) {
 
 module.exports = {
     load() {
-        Editor.Builder.on('before-change-files', handleEvent);
+        Editor.Builder.on('build-finished', handleEvent);
     },
 
     unload() {
-        Editor.Builder.removeListener('before-change-files', handleEvent);
+        Editor.Builder.removeListener('build-finished', handleEvent);
     },
 
     messages: {}

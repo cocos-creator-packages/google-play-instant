@@ -23,84 +23,16 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const ANDROID_INSTANT_DOWNLOAD_PIPE = 'AndroidInstantDownloader';
-const MAX_DOWNLOAD_TASK = 32;
-const TIME_SECONDS = 20;
-const FILE_NAME_SUFFIX = 'game';
-
 let INSTANT_REMOTE_SERVER = '';
+const REGEX = /^\w+:\/\/.*/;
 
-let textDownloader = new jsb.Downloader({
-    countOfMaxProcessingTasks: MAX_DOWNLOAD_TASK,
-    timeoutInSeconds: TIME_SECONDS,
-    tempFileNameSuffix: FILE_NAME_SUFFIX
+cc.assetManager.transformPipeline.append(function (task) {
+    let input = task.output = task.input;
+    for (var i = 0, l = input.length; i < l; i++) {
+        let item = input[i];
+        if (!REGEX.test(item.url) && item.config && !jsb.fileUtils.isFileExist(item.url)) {
+            let split = item.url.split("assets/");
+            item.url = cc.path.join(INSTANT_REMOTE_SERVER || "", split[1]);
+        }
+    }
 });
-let downloaderCbMap = {};
-
-textDownloader.setOnTaskError((function (task, errCode, errorCodeInternal, errorStr) {
-    cc.log("download fail ", task.requestURL);
-    let cb = downloaderCbMap[task.requestURL];
-    cb && cb({
-        errorCode: errCode
-    });
-    delete downloaderCbMap[task.requestURL];
-}));
-
-textDownloader.setOnFileTaskSuccess((function (task) {
-    let cb = downloaderCbMap[task.requestURL];
-    cb && cb(null, task);
-    delete downloaderCbMap[task.requestURL];
-}));
-
-function _resolvePath(url) {
-    INSTANT_REMOTE_SERVER = INSTANT_REMOTE_SERVER || "";
-    let split = url.split("res/");
-    let path = "";
-    if (split.length > 1) {
-        path = cc.path.join(INSTANT_REMOTE_SERVER, split[1]);
-    } else {
-        path = cc.path.join(INSTANT_REMOTE_SERVER, url);
-    }
-    return path;
-}
-
-function _createDownloadTask(item, callback) {
-    let url = item.url;
-    let remoteUrl = url.startsWith('http') ? url : _resolvePath(url);
-    let remotePath = jsb.fileUtils.getWritablePath() + url;
-    downloaderCbMap[remoteUrl] = callback;
-    textDownloader.createDownloadFileTask(remoteUrl, remotePath, item.uuid);
-}
-
-let AndroidInstantDownloaderPipe = function () {
-    this.id = ANDROID_INSTANT_DOWNLOAD_PIPE;
-};
-
-AndroidInstantDownloaderPipe.prototype.handle = function (item, callback) {
-    // android-instant-downloader can only be used to download res
-    if (item.url.endsWith('.js') || jsb.fileUtils.isFileExist(item.url)) {
-        return item;
-    }
-
-    let remotePath = jsb.fileUtils.getWritablePath() + item.url;
-    if (jsb.fileUtils.isFileExist(remotePath)) {
-        return item;
-    }
-
-    _createDownloadTask(item, (err, data) => {
-        do {
-            if (err) {
-                cc.error("download fail ", err.errorMessage);
-                break;
-            }
-        } while (false);
-        callback();
-    });
-};
-
-jsb.fileUtils.addSearchPath(jsb.fileUtils.getWritablePath());
-
-let instantDownloaderPipe = new AndroidInstantDownloaderPipe();
-let idx = cc.loader._pipes.indexOf(cc.loader.downloader) || 1;
-cc.loader.insertPipe(instantDownloaderPipe, idx);
-cc.loader.instantDownloaderPipe = instantDownloaderPipe;
