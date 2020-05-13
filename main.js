@@ -6,7 +6,6 @@ const xml2js = require('xml2js');
 const {android, ios} = Editor.require('app://editor/core/native-packer');
 
 const REMOTE_ASSETS_PATH = 'remote_assets';
-const TEMP_ASSETS_PATH = 'temp_assets';
 
 /**
  * 添加 facebook audience network 的 sdk 到 android 工程
@@ -195,17 +194,12 @@ function _genFirstPackage(options) {
         return;
     }
 
-    let destDirPath = Path.join(options.dest, TEMP_ASSETS_PATH);
-    Fs.ensureDirSync(destDirPath);
-    Fs.emptyDirSync(destDirPath);
+    Fs.copySync(srcDirPath, remoteDirPath);
 
     let paths = Globby.sync([Path.join(srcDirPath, "**"), '!' + Path.join(srcDirPath, "**", "config.*"), '!' + Path.join(srcDirPath, "**", "index.*")], {nodir: true});
     let first_package_list = pkgInfo.first.items.concat(options.scenes);
 
     paths.forEach(path => {
-        let destPath = path.replace("assets/", `${TEMP_ASSETS_PATH}/`);
-        Fs.ensureDirSync(Path.dirname(destPath));
-        Fs.copyFileSync(path, destPath);
         let id = Path.basenameNoExt(path);
         let inFirstPackage = first_package_list.find(uuid => {
             return id.indexOf(uuid) !== -1;
@@ -214,8 +208,6 @@ function _genFirstPackage(options) {
             Fs.unlinkSync(path);
         }
     });
-
-    Fs.renameSync(destDirPath, Path.join(options.dest, REMOTE_ASSETS_PATH));
 }
 
 /**
