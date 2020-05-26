@@ -32,7 +32,7 @@ cc.assetManager.transformPipeline.append(function (task) {
         let item = input[i];
         if (!REGEX.test(item.url) && item.config && !jsb.fileUtils.isFileExist(item.url)) {
             let split = item.url.split("assets/");
-            item.url = cc.path.join(INSTANT_REMOTE_SERVER || "", split[1]);
+            item.url = cc.path.join(INSTANT_REMOTE_SERVER || "", 'remote_assets', split[1]);
         }
     }
 });
