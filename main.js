@@ -216,7 +216,7 @@ function _genFirstPackage(options) {
  * @private
  */
 function _startPreviewServer(options) {
-    Editor.Ipc.sendToMain('app:update-android-instant-preview-path', Path.join(options.dest, REMOTE_ASSETS_PATH));
+    Editor.Ipc.sendToMain('app:update-android-instant-preview-path', options.dest);
 }
 
 async function handleEvent(options, cb) {
