@@ -50,7 +50,7 @@ async function _handleAndroid(options) {
     }
 
     //添加 build.gradle 配置
-    let buildGradlePath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/build.gradle');
+    let buildGradlePath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/instantapp/build.gradle');
     if (Fs.existsSync(buildGradlePath)) {
         let buildGradle = Fs.readFileSync(buildGradlePath, 'utf-8');
         if (isUrlValid && buildGradle.indexOf('android.defaultConfig.manifestPlaceholders') === -1) {
@@ -61,7 +61,7 @@ async function _handleAndroid(options) {
     }
 
     //修改包名，在 gradle 配置无效，所以直接在 androidManifest.xml 中修改
-    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/androidManifest.xml');
+    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/instantapp/androidManifest.xml');
     do {
         if (!Fs.existsSync(xmlPath)) {
             break;
@@ -94,7 +94,7 @@ async function _handleAndroid(options) {
 }
 
 async function _removeFilterDataIfExist(androidPacker, options) {
-    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/androidManifest.xml');
+    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/instantapp/androidManifest.xml');
     let xml = await androidPacker.readXML(xmlPath);
     do {
         if (!xml || !xml.manifest || !xml.manifest || !xml.manifest.application || !xml.manifest.application.activity || !xml.manifest.application.activity['intent-filter']) {
@@ -126,7 +126,7 @@ async function _removeFilterDataIfExist(androidPacker, options) {
 }
 
 async function _addFilterDataIfNotExist(androidPacker, options) {
-    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/game/androidManifest.xml');
+    let xmlPath = Path.join(options.dest, 'frameworks/runtime-src/proj.android-studio/instantapp/androidManifest.xml');
     let xml = await androidPacker.readXML(xmlPath);
     do {
         if (!xml || !xml.manifest || !xml.manifest || !xml.manifest.application || !xml.manifest.application.activity || !xml.manifest.application.activity['intent-filter']) {
